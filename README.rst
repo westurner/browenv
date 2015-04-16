@@ -8,7 +8,7 @@ Objectives
 ------------
 * SOCKS tunnel with supervisord
 * Chrome over SOCKS proxy (with DNS)
-* Per-(``VIRTUAL_ENV``,``_APP``) Chrome ``user-data-dir``
+* Per-(``VIRTUAL_ENV``, ``_APP``) Chrome ``user-data-dir``
 * Support venv: https://westurner.org/dotfiles/venv
 
 Package
