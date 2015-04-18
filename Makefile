@@ -2,12 +2,20 @@
 #SSH_USERHOST=user@host
 SSH_USERHOST?=
 
-
 REQUIREMENTS_TXT=requirements.txt
+
+help:
+	@echo "brw"
+	@echo "install"
+	@echo "supervisord (ssv)"
+	@echo "supervisorctl (sv)"
+	@ech
 
 install: \
 	install_promiumbookmarks \
 	install_pyline \
+	install_pgs \
+	install_brw \
 	install_supervisord \
 	install_supervisord.conf \
 	install_requirements.txt
@@ -17,6 +25,14 @@ install_promiumbookmarks:
 
 install_pyline:
 	pip install -v -e git+https://github.com/westurner/pyline@develop#egg=pyline
+
+install_pgs:
+	pip install -v -e git+https://github.com/westurner/pgs@develop#egg=pgs
+
+
+install_brw:
+	test ! -d ${_BRW} &&
+	git clone https://github.com/westurner/brw ${_BRW}
 
 install_supervisord:
 	pip install -v supervisor
@@ -28,24 +44,26 @@ install_requirements.txt:
 
 # ENV_NAME=${_APP:-${VIRTUAL_ENV:-${CUR_DIR}}}
 ifeq (${_APP}, undefined)
-	ifeq (${VIRTUAL_ENV}, undefined)
-		ENV_NAME=${CUR_DIR}
-	else
-		ENV_NAME=$(shell dirname '${CUR_DIR}')
-	endif
+ifeq (${VIRTUAL_ENV}, undefined)
+ENV_NAME=${CUR_DIR}
 else
-	ENV_NAME=${_APP}
+ENV_NAME=$(shell dirname '${CUR_DIR}')
+endif
+else
+ENV_NAME=${_APP}
 endif
 
 
 ifeq (${VIRTUAL_ENV}, undefined)
-	VIRTUAL_ENV?=${CUR_DIR}
+VIRTUAL_ENV=${CUR_DIR}
 endif
 
+_SRC=${VIRTUAL_ENV}/src
+_BRW=${_SRC}/brw
 
 # Set
 ifeq (${__IS_MAC},true)
-CHROME_BIN=open --new -b com.google.Chrome
+CHROME_BIN=open --wait-apps --new -b com.google.Chrome --args
 SEDOPTS=-i'' -e
 user-data-dir=${HOME}/Library/Application Support/Google/Chrome
 else
@@ -61,25 +79,32 @@ endif
 
 profile-directory?=Profile 1
 
-CHROME_PROFILE_DIR=${user-data-dir}/${profile-directory}
+CHROME_PROFILE_PATH=${user-data-dir}/${profile-directory}
+
+
+PROXYD_PORT=60880
+PROXYD_LISTEN_HOSTNAME=localhost
+
+MTMPRX_PORT=60881
+MTMPRX_LISTEN_HOSTNAME=${PROXYD_LISTEN_HOSTNAME}
 
 PROXY_IP=127.0.0.1
-PROXY_HOST=localhost  # if this is an IP, EXCLUDE PROXY_HOST is unnecessary
-PROXY_PORT=60880
-
-SOCKS_VERSION=5
-all-proxy=true
+# PROXY_HOST=${PROXYD_LISTEN_HOSTNAME} # if this is an IP, EXCLUDE PROXY_HOST is unnecessary
+#
+PROXY_PORT=${MTMPRX_PORT}
+PROXY_PORT=${PROXYD_PORT}
+PROXY_SOCKS_VERSION=5
 
 # Force Chrome to resolve DNS over SOCKS v5 (or NOT_FOUND)
 host-resolver-rules?="MAP * 0.0.0.0"
 ifeq (${PROXY_IP}, undefined)
-	SOCKS_SERVER=${PROXY_HOST}:${PROXY_PORT}
-	proxy-server=socks5://${PROXY_HOST}:${PROXY_PORT}
-	# If DNS is required to lookup the proxy server, EXCLUDE that fqdn
-	host-resolver-rules+="EXCLUDE ${PROXY_HOST}"
+PROXY_SOCKS_SERVER=${PROXY_HOST}:${PROXY_PORT}
+proxy-server=socks5://${PROXY_HOST}:${PROXY_PORT}
+# If DNS is required to lookup the proxy server, EXCLUDE that fqdn
+host-resolver-rules+=" EXCLUDE ${PROXY_HOST}"
 else
-	SOCKS_SERVER=${PROXY_IP}
-	proxy-server=socks5://${PROXY_IP}:${PROXY_PORT}
+PROXY_SOCKS_SERVER=${PROXY_IP}
+proxy-server=socks5://${PROXY_IP}:${PROXY_PORT}
 endif
 
 HOMEPAGE='about:blank'
@@ -87,7 +112,7 @@ ISO_DATETIME=$(shell date +'%F %T%z')
 HOMEPAGE_TITLE=\#${ENV_NAME} (${ISO_DATETIME})
 HOMEPAGE='$(shell echo 'data:text/html, <html style="font-family:Helvetica; background: \#333; width: 400px; margin: 0 auto; color: white;" contenteditable><title>${HOMEPAGE_TITLE}</title><p style="color: white;"><br>${HOMEPAGE_TITLE}<br>.</p>')'
 
-CHROME_ARGS=--proxy-server='${proxy-server}' \
+CHROME_ARGS__=--proxy-server='${proxy-server}' \
 			--host-resolver-rules=${host-resolver-rules} \
 			--dns-prefetch-disable \
 			--learning \
@@ -98,94 +123,168 @@ CHROME_ARGS=--proxy-server='${proxy-server}' \
 			--no-pings \
 			--homepage="about:blank" \
  			--user-data-dir=${user-data-dir} \
-			--no-referrers
+			--no-referrers \
+			${CHROME_ARGS}
 	
+# #disable-hyperlink-auditing=enable
+# #disable-javascript-harmony-shipping
+# #enable-devtools-experiments=enable
+# #enable-md-settings
+# #enable-site-per-process=disabled
+# #enable-tab-audio-muting
+# #enable-website-settings-manager=enable
+# #enhanced-bookmarks-experiment=disabled
+# #extension-content-verification=
+# #ignore-gpu-blacklist
+# #mark-non-secure-as=dubious
+# #remember-cert-error-decisions=1d,3d,1w,1m,3m
+# #save-page-as-mhtml=enable
+# #ssl-version-min
+#
+# linux:
+# #enable-smooth-scrolling
 			
 URI=about:blank
 URI=
 URI=chrome://history
 URI=${HOMEPAGE}
 
-#_VARCACHE=${VIRTUAL_ENV}/var/cache
+_VARCACHE?=${VIRTUAL_ENV}/var/cache
+_VARLOG?=${VIRTUAL_ENV}/var/log
 _VARCACHE_SSH=${_VARCACHE}/ssh
+_VARCACHE_MTMPRX=${_VARCACHE}/mtm
 _VARCACHE_CHROME=${_VARCACHE}/chrome
-
+_VARCACHE_BRW=${_VARCACHE}/brw
 
 set-facls:
+	(umask 0026; mkdir -p ${_VARLOG} || true)
+	chmod go-rw ${_VARLOG}
+	(umask 0026; mkdir -p ${_VARLOG_BRW} || true)
+	chmod go-rw ${_VARLOG_BRW}
 	(umask 0026; mkdir -p ${_VARCACHE} || true)
 	chmod go-rw ${_VARCACHE}
 	(umask 0026; mkdir -p ${_VARCACHE_SSH} || true)
 	chmod go-rw ${_VARCACHE_SSH}
+	(umask 0026; mkdir -p ${_VARCACHE_MTMPRX} || true)
+	chmod go-rw ${_VARCACHE_MTMPRX}
 	(umask 0026; mkdir -p ${_VARCACHE_CHROME} || true)
 	chmod go-rw ${_VARCACHE_CHROME}
+	(umask 0026; mkdir -p ${_VARCACHE_BRW} || true)
+	chmod go-rw ${_VARCACHE_BRW}
 	(umask 0026; mkdir -p ${user-data-dir} || true)
 	chmod go-rw ${user-data-dir}
 
 ## SSH 
 
 SSH_PID_FILE=${_VARCACHE_SSH}/.pid
-open-ssh-socks:
+open-ssh:
 	test -n "$(SSH_USERHOST)" || (echo "SSH_USERHOST=$(SSH_USERHOST)" && exit 1)
-	(umask 0026; mkdir -p ${_VARCACHE_SSH})
 	-$(MAKE) set-facls
 	date +'%F %T%z'
 	cd . && { set -m; \
-		ssh -N -D${PROXY_PORT} ${SSH_USERHOST} & \
-		echo "$$!" > ${SSH_PID_FILE} ; \
-		cat ${SSH_PID_FILE}; \
-		fg; }
+	  ssh -v -N -D${PROXYD_PORT} ${SSH_USERHOST} & \
+	  echo "$$!" > ${SSH_PID_FILE} ; \
+	  cat ${SSH_PID_FILE}; \
+	  fg; }
 
-# $(SSH_PID_FILE): open-ssh-socks
+# $(SSH_PID_FILE): open-ssh
 
-close-ssh-socks:
+close-ssh:
 	test -f ${SSH_PID_FILE}
+	(umask 0026; mkdir -p ${_VARCACHE_SSH})
 	kill -9 $(shell cat "${SSH_PID_FILE}") || true
 	rm ${SSH_PID_FILE}
+	-$(MAKE) set-facls
 
+
+MTMPRX_PID_FILE=${_VARCACHE_MTMPRX}/.pid
+open-mtm:
+	$(MAKE) close-mtm || true
+	@$(MAKE) set-facls
+	date +'%F %T%z'
+	cd . && { set -m; \
+		mitmdump --socks -a \
+			-p ${MTMPRX_PORT} \
+			-b "${MTMPRX_LISTEN_HOSTNAME}" \
+			-s "./scripts/mtmprx/doheaders.py"  & \
+		echo "$$!" > ${MTMPRX_PID_FILE} ; \
+		cat ${MTMPRX_PID_FILE}; \
+		fg; }
+
+close-mtm:
+	test -f ${MTMPRX_PID_FILE}
+	kill -9 $(shell cat "${MTMPRX_PID_FILE}") || true
+	rm ${MTMPRX_PID_FILE}
+	@$(MAKE) set-facls
 
 ## Chrome Browser
 
 CHROME_PID_FILE=${_VARCACHE_CHROME}/.pid
-URI?=${HOMEPAGE}
+URI=${HOMEPAGE}
 open-chrome:
-	-$(MAKE) set-facls
+	@$(MAKE) set-facls
 	date +'%F %T%z'
-	echo "CHROME_PROFILE_DIR='${CHROME_PROFILE_DIR}'"
+	echo "CHROME_PROFILE_PATH='${CHROME_PROFILE_PATH}'"
 	cd . && { set -m; \
-		${CHROME_BIN} --args ${CHROME_ARGS} ${URI} & \
+		${CHROME_BIN} ${CHROME_ARGS__} ${URI} & \
 		echo "$$!" > ${CHROME_PID_FILE} ; \
 		cat ${CHROME_PID_FILE}; \
 		fg; }
 
 close-chrome:
-	test ${CHROME_PID_FILE}
+	test -f ${CHROME_PID_FILE}
 	kill -9 $(shell cat "${CHROME_PID_FILE}")
 	rm ${CHROME_PID_FILE}
+	@$(MAKE) set-facls
+
+_VARLOG_BRW=${_VARLOG}/brw
+BRW_PID_FILE=${_VARCACHE_BRW}/.pid
 
 
+BRW_HOST=localhost
+BRW_PORT=60883
+
+serve-brw-pgs:
+	# make install_brw install_pgs
+	# (cd ${_BRW}; pgs -v -g . -r <gittagbranchcommit>;)
+	@$(MAKE) set-facls
+	(cd ${_BRW}; \
+		pgs -v -p . -H ${BRW_HOST} -P ${BRW_PORT} \
+		| tee ${_VARLOG_BRW}/pgs.log)
+
+close-brw-pgs:
+	test -f ${BRW_PID_FILE}
+	kill -9 $(shell cat "${BRW_PID_FILE}")
+	rm ${BRW_PID_FILE}
+	@$(MAKE) set-facls
+
+
+serve-brw:
+	$(MAKE) serve-brw-pgs &
+	$(MAKE) open-chrome URI=http://${BRW_HOST}:${BRW_PORT}
 
 rebuild-bookmarks:
 	# ${MAKE} close-chrome; sleep 3
-	promiumbookmarks --skip-prompt --overwrite '${CHROME_PROFILE_DIR}/Bookmarks'
+	promiumbookmarks --skip-prompt --overwrite '${CHROME_PROFILE_PATH}/Bookmarks'
 
 list-bookmarks:
-	promiumbookmarks --print-all '${CHROME_PROFILE_DIR}/Bookmarks'
+	promiumbookmarks --print-all '${CHROME_PROFILE_PATH}/Bookmarks'
 
 list-bookmarks-by-date-oldest-first:
-	promiumbookmarks --print-all --by-date '${CHROME_PROFILE_DIR}/Bookmarks'
+	promiumbookmarks --print-all --by-date '${CHROME_PROFILE_PATH}/Bookmarks'
 
 list-bookmarks-by-date-newest-first:
-	promiumbookmarks --print-all --by-date -r '${CHROME_PROFILE_DIR}/Bookmarks'
+	promiumbookmarks --print-all --by-date -r '${CHROME_PROFILE_PATH}/Bookmarks'
 
 list-bookmark-words:
-	@promiumbookmarks --print-all --by-date -r '${CHROME_PROFILE_DIR}/Bookmarks' \
+	@promiumbookmarks --print-all --by-date -r '${CHROME_PROFILE_PATH}/Bookmarks' \
 		| grep '^# name :' \
 		| pyline --input-delim-split-max=3 -F ' ' 'w[3:]' \
 		| pyline 'l.replace(" ", "\n").replace("#","\n").replace("# ","\n")' \
 		| pyline '"".join(c for c in l if c not in (dict.fromkeys("\n ,:;(){}<>'"'"'\"|!-"))).lower()' \
 		| grep -v '^http'
 
-TAG_BASE_URI?=\#
+TAG_BASE_URI=\#
 list-bookmark-words-template:
 	@echo '<html>'
 	@echo '<head>'
@@ -230,6 +329,9 @@ list-bookmark-words-uniq-with-count:
 list-bookmark-words-uniq-by-count-descending:
 	@$(MAKE) list-bookmark-words | sort | uniq -c | sort -n -r
 
+
+### supervisord
+
 _ETC=${VIRTUAL_ENV}/etc
 _SVCFG=${_ETC}/supervisord.conf
 
@@ -246,11 +348,15 @@ supervisorctl:
 
 sv: supervisorctl
 
-open: install_supervisord supervisord
+### 
+
+open:
+	#$(MAKE) install_supervisord supervisord supervisorctl SUPERVISOR_CMD=status
+	$(MAKE) supervisord
 	$(MAKE) supervisorctl SUPERVISOR_CMD="status"
 	$(MAKE) open-chrome
 
 close:
 	$(MAKE) supervisorctl SUPERVISOR_CMD="shutdown"
-	$(MAKE) close-ssh-socks
+	$(MAKE) close-ssh
 	$(MAKE) supervisorctl SUPERVISOR_CMD="status" || true
