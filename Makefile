@@ -30,8 +30,9 @@ install_pgs:
 	pip install -v -e git+https://github.com/westurner/pgs@develop#egg=pgs
 
 
-install_brw:
-	test ! -d ${_BRW} &&
+install_brw: ${_BRW}
+
+${_BRW}:
 	git clone https://github.com/westurner/brw ${_BRW}
 
 install_supervisord:
