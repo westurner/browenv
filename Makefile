@@ -12,16 +12,17 @@ help:
 	@ech
 
 install: \
-	install_promiumbookmarks \
+	install_pbm \
 	install_pyline \
 	install_pgs \
+	install_pgm \
 	install_brw \
 	install_supervisord \
 	install_supervisord.conf \
 	install_requirements.txt
 
-install_promiumbookmarks:
-	pip install -v -e git+https://github.com/westurner/promiumbookmarks#egg=promiumbookmarks
+install_pbm:
+	pip install -v -e git+https://github.com/westurner/pbm#egg=pbm
 
 install_pyline:
 	pip install -v -e git+https://github.com/westurner/pyline@develop#egg=pyline
@@ -29,11 +30,15 @@ install_pyline:
 install_pgs:
 	pip install -v -e git+https://github.com/westurner/pgs@develop#egg=pgs
 
+install_pbm:
+	pip install tornado
+	pip install -v -e git+https://github.com/westurner/pbm@master#egg=pbm
 
 install_brw: ${_BRW}
 
 ${_BRW}:
 	git clone https://github.com/westurner/brw ${_BRW}
+
 
 install_supervisord:
 	pip install -v supervisor
@@ -264,21 +269,26 @@ serve-brw:
 	$(MAKE) serve-brw-pgs &
 	$(MAKE) open-chrome URI=http://${BRW_HOST}:${BRW_PORT}
 
+PBM_HOST=localhost
+PBM_PORT=60884
+serve-pbmweb:
+	pbmweb -H ${PBM_HOST} -P ${PBM_PORT} -f "${CHROME_PROFILE_PATH}/Bookmarks"
+
 rebuild-bookmarks:
 	# ${MAKE} close-chrome; sleep 3
-	promiumbookmarks --skip-prompt --overwrite '${CHROME_PROFILE_PATH}/Bookmarks'
+	pbm --skip-prompt --overwrite '${CHROME_PROFILE_PATH}/Bookmarks'
 
 list-bookmarks:
-	promiumbookmarks --print-all '${CHROME_PROFILE_PATH}/Bookmarks'
+	pbm --print-all '${CHROME_PROFILE_PATH}/Bookmarks'
 
 list-bookmarks-by-date-oldest-first:
-	promiumbookmarks --print-all --by-date '${CHROME_PROFILE_PATH}/Bookmarks'
+	pbm --print-all --by-date '${CHROME_PROFILE_PATH}/Bookmarks'
 
 list-bookmarks-by-date-newest-first:
-	promiumbookmarks --print-all --by-date -r '${CHROME_PROFILE_PATH}/Bookmarks'
+	pbm --print-all --by-date -r '${CHROME_PROFILE_PATH}/Bookmarks'
 
 list-bookmark-words:
-	@promiumbookmarks --print-all --by-date -r '${CHROME_PROFILE_PATH}/Bookmarks' \
+	@pbm --print-all --by-date -r '${CHROME_PROFILE_PATH}/Bookmarks' \
 		| grep '^# name :' \
 		| pyline --input-delim-split-max=3 -F ' ' 'w[3:]' \
 		| pyline 'l.replace(" ", "\n").replace("#","\n").replace("# ","\n")' \
