@@ -15,11 +15,11 @@ install: \
 	install_pbm \
 	install_pyline \
 	install_pgs \
-	install_pgm \
+	install_pbm \
 	install_brw \
+	install_requirements.txt \
 	install_supervisord \
 	install_supervisord.conf \
-	install_requirements.txt
 
 install_pbm:
 	pip install -v -e git+https://github.com/westurner/pbm#egg=pbm
