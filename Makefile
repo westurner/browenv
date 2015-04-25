@@ -274,9 +274,14 @@ PBM_PORT=60884
 serve-pbmweb:
 	pbmweb -H ${PBM_HOST} -P ${PBM_PORT} -f "${CHROME_PROFILE_PATH}/Bookmarks"
 
-rebuild-bookmarks:
-	# ${MAKE} close-chrome; sleep 3
-	pbm --skip-prompt --overwrite '${CHROME_PROFILE_PATH}/Bookmarks'
+organize-bookmarks:
+	# Note: Chrome writes ./Bookmarks
+	# * at shutdown
+	# * before 'Export as HTML'
+	# So, the browser must be closed for these changes to not be overwritten.
+	#
+	# $ make close-chrome
+	pbm --skip-prompt --organize '${CHROME_PROFILE_PATH}/Bookmarks'
 
 list-bookmarks:
 	pbm --print-all '${CHROME_PROFILE_PATH}/Bookmarks'
