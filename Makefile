@@ -69,6 +69,8 @@ SEDOPTS=-i'' -e
 user-data-dir=${HOME}/Library/Application Support/Google/Chrome
 else
 CHROME_BIN=/usr/bin/google-chrome
+CHROME_BIN=/bin/google-chrome
+CHROME_BIN=google-chrome
 SEDOPTS=-i
 user-data-dir=${HOME}/.config/google/chrome
 endif
