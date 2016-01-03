@@ -228,6 +228,7 @@ open-chrome:
 	@$(MAKE) set-facls
 	date +'%F %T%z'
 	echo "CHROME_PROFILE_PATH='${CHROME_PROFILE_PATH}'"
+	test -d '${user-data-dir}' || mkdir -p '${user-data-dir}'	
 	cd . && { set -m; \
 		${CHROME_BIN} ${CHROME_ARGS__} ${URI} & \
 		echo "$$!" > ${CHROME_PID_FILE} ; \
