@@ -9,7 +9,6 @@ help:
 	@echo "install"
 	@echo "supervisord (ssv)"
 	@echo "supervisorctl (sv)"
-	@ech
 
 install: \
 	install_pbm \
@@ -74,6 +73,8 @@ SEDOPTS=-i'' -e
 user-data-dir=${HOME}/Library/Application Support/Google/Chrome
 else
 CHROME_BIN=/usr/bin/google-chrome
+CHROME_BIN=/bin/google-chrome
+CHROME_BIN=google-chrome
 SEDOPTS=-i
 user-data-dir=${HOME}/.config/google/chrome
 endif
@@ -231,6 +232,7 @@ open-chrome:
 	@$(MAKE) set-facls
 	date +'%F %T%z'
 	echo "CHROME_PROFILE_PATH='${CHROME_PROFILE_PATH}'"
+	test -d '${user-data-dir}' || mkdir -p '${user-data-dir}'	
 	cd . && { set -m; \
 		${CHROME_BIN} ${CHROME_ARGS__} ${URI} & \
 		echo "$$!" > ${CHROME_PID_FILE} ; \
