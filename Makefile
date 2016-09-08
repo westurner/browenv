@@ -76,12 +76,12 @@ CHROME_BIN=/usr/bin/google-chrome
 CHROME_BIN=/bin/google-chrome
 CHROME_BIN=google-chrome
 SEDOPTS=-i
-user-data-dir=${HOME}/.config/google/chrome
+user-data-dir=${HOME}/.config/google-chrome
 endif
 
-ifeq (${VIRTUAL_ENV}, undefined)
+ifeq ("${VIRTUAL_ENV}", "")
 else
-user-data-dir=${_HOME}/${_APP}/.config/google/chrome
+user-data-dir=${_HOME}/${_APP}/.config/google-chrome
 endif
 
 profile-directory?=Profile 1
