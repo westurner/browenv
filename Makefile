@@ -9,7 +9,6 @@ help:
 	@echo "install"
 	@echo "supervisord (ssv)"
 	@echo "supervisorctl (sv)"
-	@ech
 
 install: \
 	install_promiumbookmarks \
