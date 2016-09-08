@@ -1,0 +1,9 @@
+[submodule "src/pgs"]
+	path = src/pgs
+	url = https://github.com/westurner/pgs
+[submodule "src/pyline"]
+	path = src/pyline
+	url = https://github.com/westurner/pyline
+[submodule "src/pbm"]
+	path = src/pbm
+	url = https://github.com/westurner/pbm
